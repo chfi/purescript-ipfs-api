@@ -1,0 +1,22 @@
+{
+  "name": "purescript-ipfs-api",
+  "version": "0.0.1",
+  "description": "Purescript API to the Interplanetary File System",
+  "dependencies": {
+    "ipfs-api": "^14.1.2"
+  },
+  "devDependencies": {
+    "bower": "1.8.0",
+    "pulp": "11.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chfi/purescript-ipfs-api.git"
+  },
+  "scripts": {
+    "deps": "bower install",
+    "test": "pulp test",
+    "watch-test": "pulp --watch test"
+  }
+}
