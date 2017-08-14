@@ -9,11 +9,11 @@ module IPFS
 
 
 import Prelude
-import Control.Promise as Promise
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
+import Control.Promise as Promise
 import Control.Promise (Promise)
 import IPFS.Types (IPFS, IPFSEff)
 import IPFS.Types (IPFS, IPFSEff) as Exports
@@ -30,6 +30,13 @@ type IPFSPeer = { id :: String
 
 foreign import identityImpl :: ∀ eff. EffFn1 (ipfs :: IPFSEff | eff) IPFS (Promise IPFSPeer)
 
+identity :: forall t23.
+  IPFS
+  -> Aff
+       ( ipfs :: IPFSEff
+       | t23
+       )
+       IPFSPeer
 identity ipfs = liftEff (runEffFn1 identityImpl ipfs) >>= Promise.toAff
 
 

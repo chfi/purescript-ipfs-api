@@ -1,7 +1,9 @@
-var ipfsAPI = require('ipfs-api');
+"use strict";
+
+var ipfsAPI = require("ipfs-api");
 
 exports.connectImpl = function(host, port) {
-    return ipfsAPI(host, port, {protocol: 'http'});
+    return ipfsAPI(host, port, {protocol: "http"});
 };
 
 
