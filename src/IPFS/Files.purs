@@ -43,25 +43,3 @@ cat :: forall eff r.
              )
           )
 cat ipfs (IPFSPathString path) = liftEff (runEffFn2 catImpl ipfs path) >>= Promise.toAff
-
-
-cat' :: forall t15 t21 t22.
-  MonadEff
-    ( ipfs :: IPFSEff
-    | t21
-    )
-    t15
-   => IPFS
-      -> IPFSPath
-         -> t15
-              (Promise
-                 (Stream
-                    ( read :: Read
-                    | t22
-                    )
-                    ( ipfs :: IPFSEff
-                    | t21
-                    )
-                 )
-              )
-cat' ipfs (IPFSPathString path) = liftEff (runEffFn2 catImpl ipfs path)

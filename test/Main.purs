@@ -32,7 +32,13 @@ main = do
     -- dat <- Files.cat ipfs (IPFSPathString "/ipfs/QmVLDAhCY3X9P2uRudKAryuQFPM5zqA3Yij1dY8FpGbL7T/quick-start")
     liftEff $ log $ ":("
     promise <- Files.cat ipfs path
+    stream <- Files.cat ipfs path
 
+    liftEff $ Stream.onData stream \bfr -> do
+      log "reading file"
+      log =<< Buffer.toString UTF8 bfr
+
+    liftEff $ Stream.onEnd stream $ log "end file"
     -- dat' <- liftEff $ Stream.readString dat2 Nothing UTF8
     liftEff $ do
       log $ "version: " <> ver.version
