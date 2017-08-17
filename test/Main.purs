@@ -6,12 +6,15 @@ import Control.Monad.Aff (launchAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Data.Maybe (Maybe(..))
+import Data.Array (init, zipWith)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Traversable (sequence, sequence_, traverse, traverse_)
 import Global.Unsafe (unsafeStringify)
 import IPFS (IPFSEff)
 import IPFS as IPFS
 import IPFS.Files as Files
 import IPFS.Types (IPFSPath(..))
+import Node.Buffer as Buffer
 import Node.Encoding (Encoding(..))
 import Node.Stream as Stream
 import Unsafe.Coerce (unsafeCoerce)
@@ -21,7 +24,6 @@ pathStr = "/ipfs/QmVLDAhCY3X9P2uRudKAryuQFPM5zqA3Yij1dY8FpGbL7T/quick-start"
 path = IPFSPathString pathStr
 
 
--- main :: forall e. Eff (console :: CONSOLE, ipfs :: IPFSEff | e) Unit
 main :: Eff _ Unit
 main = do
   ipfs <- IPFS.connect "localhost" 5001
@@ -29,24 +31,33 @@ main = do
     ver <- IPFS.version ipfs
     ident <- IPFS.identity ipfs
 
-    -- dat <- Files.cat ipfs (IPFSPathString "/ipfs/QmVLDAhCY3X9P2uRudKAryuQFPM5zqA3Yij1dY8FpGbL7T/quick-start")
-    liftEff $ log $ ":("
-    promise <- Files.cat ipfs path
+    let strFile f = liftEff $ Stream.onData f \bfr -> do
+          log "reading file"
+          log =<< Buffer.toString UTF8 bfr
+
+        endFile f = liftEff $ Stream.onEnd f $ log "end file"
+
+
+    liftEff $ log "----- Read existing file -----"
     stream <- Files.cat ipfs path
+    strFile stream
+    endFile stream
 
-    liftEff $ Stream.onData stream \bfr -> do
-      log "reading file"
-      log =<< Buffer.toString UTF8 bfr
 
-    liftEff $ Stream.onEnd stream $ log "end file"
-    -- dat' <- liftEff $ Stream.readString dat2 Nothing UTF8
+    liftEff $ log "----- Write file -----"
+    buffers <- traverse (\x -> liftEff $ Buffer.fromString x UTF8)
+                ["this is a test file", "another test file"]
+    let paths = ["/tmp/testfile.txt", "/tmp/testfile2.txt"]
+    results <- Files.add ipfs (zipWith (\path content -> {path, content}) paths buffers)
+
+    -- removing the last result path since it's the /tmp/ directory
+    let paths = map (IPFSPathString <<< _.hash) $ fromMaybe [] (init results)
+
+    liftEff $ log "----- Read new file ----"
+    traverse_ (strFile <=< Files.cat ipfs) paths
+
     liftEff $ do
       log $ "version: " <> ver.version
       log $ "id: " <> ident.id
-      -- log $ unsafeCoerce promise
-
-      -- case dat' of
-      --   Nothing -> log "failed reading file"
-      --   Just s  -> log s
 
   pure unit
