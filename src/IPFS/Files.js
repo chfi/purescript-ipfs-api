@@ -1,12 +1,9 @@
 "use strict";
 
-exports.catImpl = function(ipfs, path) {
-    ipfs.files.cat(path, function(err, str) {
-        console.log("reading from files");
-        console.log(str.isPaused());
-        console.log(str);
-    });
+exports.addImpl = function(ipfs, objs) {
+    return ipfs.files.add(objs);
+};
 
-    var f = ipfs.files.cat(path);
-    return f;
+exports.catImpl = function(ipfs, path) {
+    return ipfs.files.cat(path);
 };

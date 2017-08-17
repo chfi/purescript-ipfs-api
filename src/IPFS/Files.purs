@@ -9,31 +9,53 @@ module IPFS.Files where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, makeAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Aff (Aff)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
-import Node.Stream (Read, Readable, Stream)
+import Node.Buffer (Buffer)
+import Node.Stream (Readable)
 
 
+type IPFSObject = { path :: String
+                  , content :: Buffer }
+
+type AddResult = { path :: String
+                 , hash :: String
+                 , size :: Int
+                 }
 
 
-add = false
+foreign import addImpl :: ∀ r eff.
+                          EffFn2 (ipfs :: IPFSEff | eff)
+                          IPFS
+                          (Array IPFSObject)
+                          (Promise (Array AddResult))
+
+add :: ∀ eff.
+  IPFS
+  -> Array IPFSObject
+  -> Aff ( ipfs :: IPFSEff
+         | eff
+         ) (Array AddResult)
+add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
+
 createAddStream = false
 
--- makeAff :: forall e a. ((Error -> Eff e Unit) -> (a -> Eff e Unit) -> Eff e Unit) -> Aff e a
 
-foreign import catImpl :: ∀ r eff. EffFn2 (ipfs :: IPFSEff | eff) IPFS String (Promise (Readable r (ipfs :: IPFSEff | eff)))
+foreign import catImpl :: ∀ r eff.
+                          EffFn2 (ipfs :: IPFSEff | eff)
+                          IPFS
+                          String
+                          (Promise (Readable r (ipfs :: IPFSEff | eff)))
 
-cat :: forall eff r.
-  IPFS
-  -> IPFSPath
-     -> Aff
+cat :: ∀ r eff.
+       IPFS
+    -> IPFSPath
+    -> Aff
           ( ipfs :: IPFSEff
           | eff
           )
