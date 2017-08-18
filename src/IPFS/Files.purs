@@ -11,7 +11,7 @@ import Prelude
 
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2)
+import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import IPFS (IPFS, IPFSEff)
@@ -43,7 +43,13 @@ add :: ∀ eff.
          ) (Array AddResult)
 add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
 
-createAddStream = false
+
+foreign import createAddStreamImpl :: ∀ r eff.
+                                      EffFn1 (ipfs :: IPFSEff | eff)
+                                      IPFS
+                                      (Promise (Duplex (ipfs :: IPFSEff | eff)))
+
+createAddStream ipfs = liftEff (runEffFn1 createAddStreamImpl ipfs)
 
 
 foreign import catImpl :: ∀ r eff.
