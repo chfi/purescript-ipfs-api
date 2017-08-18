@@ -2,7 +2,9 @@ module Test.Main where
 
 import Prelude
 
-import Control.Coroutine (Consumer, Transformer, Producer, await, consumer, runProcess, transform, ($$), ($~), (~$))
+import Control.Coroutine (Consumer, Producer, Transformer, await, consumer, emit, pullFrom, runProcess, transform, ($$), ($~), (~$))
+import Control.Coroutine.Aff (produce')
+import Control.Monad (when)
 import Control.Monad.Aff (Aff, launchAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -12,9 +14,11 @@ import Control.Monad.Trans.Class (lift)
 import Data.Argonaut (_Number, _Object, _String, jsonParser)
 import Data.Array (init, zipWith)
 import Data.Either (Either(..), either)
+import Data.Int (even)
 import Data.Lens ((^?))
 import Data.Lens.Index (ix)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Profunctor (rmap)
 import Data.Traversable (sequence, sequence_, traverse, traverse_)
 import Global.Unsafe (unsafeStringify)
 import IPFS (IPFSEff)
@@ -88,6 +92,7 @@ main = do
                             json ^? _Object <<< ix "other" <<< _Number
                   pure {test, other}
 
+
     let cnsm :: Consumer (Either String {test :: String, other :: Number}) (Aff _) Unit
         cnsm = consumer \obj -> do
           liftEff $ case obj of
@@ -98,6 +103,16 @@ main = do
           pure Nothing
 
     traverse_ (\p -> runProcess ((p $~ trns) $$ cnsm)) producers
+
+
+    liftEff $ log "----- Add files with consumer -----"
+    streamConsumer <- Files.createAddStreamConsumer ipfs
+    runProcess $ streamConsumer `pullFrom` do
+      bfr1 <- liftEff $ Buffer.fromString "buffer1" UTF8
+      bfr2 <- liftEff $ Buffer.fromString "buffer2" UTF8
+      emit {path: "/tmp/buffer1", content: bfr1}
+      emit {path: "/tmp/buffer2", content: bfr2}
+
 
     liftEff $ do
       log $ "version: " <> ver.version

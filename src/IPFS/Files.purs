@@ -9,13 +9,15 @@ module IPFS.Files where
 
 import Prelude
 
-import Control.Coroutine (Producer)
+import Control.Coroutine (Consumer, Producer, await)
 import Control.Coroutine.Aff (produce', produceAff)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
+import Control.Monad.Rec.Class (forever)
+import Control.Monad.Trans.Class (lift)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import Data.Either (Either(..))
@@ -23,7 +25,7 @@ import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (Buffer)
 import Node.Encoding (Encoding(..))
-import Node.Stream (Duplex, Readable, onClose, onData, onDataString)
+import Node.Stream (Duplex, Readable, Writable, onClose, onData, onDataString, write)
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -54,9 +56,15 @@ add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
 foreign import createAddStreamImpl :: ∀ r eff.
                                       EffFn1 (ipfs :: IPFSEff | eff)
                                       IPFS
-                                      (Promise (Duplex (ipfs :: IPFSEff | eff)))
+                                      (Promise (Writable r (ipfs :: IPFSEff | eff)))
 
-createAddStream ipfs = liftEff (runEffFn1 createAddStreamImpl ipfs)
+createAddStreamConsumer :: IPFS -> Aff _ (Consumer IPFSObject (Aff _) Unit)
+createAddStreamConsumer ipfs = do
+  stream <- liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
+  pure $ forever do
+    obj <- await
+    _ <- liftEff $ write stream (unsafeCoerce obj) (pure unit)
+    pure unit
 
 
 foreign import catImpl :: ∀ r eff.
