@@ -9,15 +9,22 @@ module IPFS.Files where
 
 import Prelude
 
+import Control.Coroutine (Producer)
+import Control.Coroutine.Aff (produce', produceAff)
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
 import Control.Promise (Promise)
 import Control.Promise as Promise
+import Data.Either (Either(..))
 import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (Buffer)
-import Node.Stream (Readable)
+import Node.Encoding (Encoding(..))
+import Node.Stream (Duplex, Readable, onClose, onData, onDataString)
+import Unsafe.Coerce (unsafeCoerce)
 
 
 type IPFSObject = { path :: String
@@ -29,7 +36,7 @@ type AddResult = { path :: String
                  }
 
 
-foreign import addImpl :: ∀ r eff.
+foreign import addImpl :: ∀ eff.
                           EffFn2 (ipfs :: IPFSEff | eff)
                           IPFS
                           (Array IPFSObject)
@@ -71,3 +78,27 @@ cat :: ∀ r eff.
              )
           )
 cat ipfs (IPFSPathString path) = liftEff (runEffFn2 catImpl ipfs path) >>= Promise.toAff
+
+
+type CatEffs eff = ( ipfs :: IPFSEff
+                   , exception :: EXCEPTION
+                   , avar :: AVAR | eff)
+catProducer :: ∀ eff.
+               IPFS
+            -> IPFSPath
+            -> Aff (CatEffs eff)
+                   (Producer String (Aff (CatEffs eff)) Unit)
+catProducer ipfs (IPFSPathString path) = do
+  str <- liftEff (runEffFn2 catImpl ipfs path) >>= Promise.toAff
+  pure $ produce' \emit -> do
+    onDataString str UTF8 $ emit <<< Left
+    onClose str $ emit (Right unit)
+
+
+-- TODO: Node.Stream can't deal with Object streams
+-- foreign import getImpl :: ∀ r eff.
+--                           EffFn2 (ipfs :: IPFSEff | eff)
+--                           IPFS
+--                           String
+--                           (Promise (Readable r (ipfs :: IPFSEff | eff)))
+-- get ipfs (IPFSPathString path) = (liftEff (runEffFn2 getImpl ipfs path) >>= Promise.toAff)
