@@ -2,7 +2,7 @@ module Test.Main where
 
 import Prelude
 
-import Control.Coroutine (Consumer, await, consumer, runProcess, ($$), ($~))
+import Control.Coroutine (Consumer, Transformer, Producer, await, consumer, runProcess, transform, ($$), ($~), (~$))
 import Control.Monad.Aff (Aff, launchAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -76,22 +76,28 @@ main = do
     let hashes = map (IPFSPathString <<< _.hash) $ fromMaybe [] (init results)
 
     liftEff $ log "----- Producer with cat -----"
-    prd <- traverse (Files.catProducer ipfs) hashes
-    let cns :: Consumer String (Aff _) Unit
-        cns = consumer \str -> do
-          let obj = either id id do
-                json <- jsonParser str
-                test <- maybe (Left "No 'test' field") Right $
-                          json ^? _Object <<< ix "test" <<< _String
-                other <- maybe (Left "No 'other' field") Right $
-                          json ^? _Object <<< ix "other" <<< _Number
-                pure $ "test: " <> test <> "\nother: " <> show other
+    producers <- traverse (Files.catProducer ipfs) hashes
 
-          liftEff $ log "consuming"
-          liftEff $ log obj
+    let trns :: ∀ m. Monad m
+             => Transformer String (Either String {test :: String, other :: Number}) m Unit
+        trns = transform \str -> do
+                  json <- jsonParser str
+                  test <- maybe (Left "No 'test' field") Right $
+                            json ^? _Object <<< ix "test" <<< _String
+                  other <- maybe (Left "No 'other' field") Right $
+                            json ^? _Object <<< ix "other" <<< _Number
+                  pure {test, other}
+
+    let cnsm :: Consumer (Either String {test :: String, other :: Number}) (Aff _) Unit
+        cnsm = consumer \obj -> do
+          liftEff $ case obj of
+            Left str -> log str
+            Right {test, other} -> do
+              log $ "test: " <> test
+              log $ "other: " <> show other
           pure Nothing
 
-    traverse_ (\p -> runProcess (p $$ cns)) prd
+    traverse_ (\p -> runProcess ((p $~ trns) $$ cnsm)) producers
 
     liftEff $ do
       log $ "version: " <> ver.version
