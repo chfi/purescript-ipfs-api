@@ -105,13 +105,13 @@ main = do
     traverse_ (\p -> runProcess ((p $~ trns) $$ cnsm)) producers
 
 
-    liftEff $ log "----- Add files with consumer -----"
-    streamConsumer <- Files.createAddStreamConsumer ipfs
-    runProcess $ streamConsumer `pullFrom` do
-      bfr1 <- liftEff $ Buffer.fromString "buffer1" UTF8
-      bfr2 <- liftEff $ Buffer.fromString "buffer2" UTF8
-      emit {path: "/tmp/buffer1", content: bfr1}
-      emit {path: "/tmp/buffer2", content: bfr2}
+    -- liftEff $ log "----- Add files with consumer -----"
+    -- streamConsumer <- Files.createAddStreamConsumer ipfs
+    -- runProcess $ streamConsumer `pullFrom` do
+    --   bfr1 <- liftEff $ Buffer.fromString "buffer1" UTF8
+    --   bfr2 <- liftEff $ Buffer.fromString "buffer2" UTF8
+    --   emit {path: "/tmp/buffer1", content: bfr1}
+    --   emit {path: "/tmp/buffer2", content: bfr2}
 
 
     liftEff $ do

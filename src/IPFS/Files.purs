@@ -21,6 +21,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (Buffer)
@@ -53,18 +54,26 @@ add :: ∀ eff.
 add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
 
 
-foreign import createAddStreamImpl :: ∀ r eff.
-                                      EffFn1 (ipfs :: IPFSEff | eff)
-                                      IPFS
-                                      (Promise (Writable r (ipfs :: IPFSEff | eff)))
+-- TODO: createAddStream uses object mode streams AFAICT,
+-- which are not supported by purescript-node-streams
+-- foreign import createAddStreamImpl :: ∀ eff.
+--                                       EffFn1 (ipfs :: IPFSEff | eff)
+--                                       IPFS
+--                                       (Promise (Duplex (ipfs :: IPFSEff | eff)))
 
-createAddStreamConsumer :: IPFS -> Aff _ (Consumer IPFSObject (Aff _) Unit)
-createAddStreamConsumer ipfs = do
-  stream <- liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
-  pure $ forever do
-    obj <- await
-    _ <- liftEff $ write stream (unsafeCoerce obj) (pure unit)
-    pure unit
+-- createAddStream :: ∀ eff.
+--                    IPFS
+--                 -> Aff ( ipfs :: IPFSEff | eff ) (Duplex ( ipfs :: IPFSEff | eff ))
+-- createAddStream ipfs = liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
+
+
+-- createAddStreamConsumer :: IPFS -> Aff _ (Consumer IPFSObject (Aff _) (Array AddResult))
+-- createAddStreamConsumer ipfs = do
+--   stream <- liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
+--   pure $ forever do
+--     obj <- await
+--     _ <- liftEff $ write stream (unsafeCoerce obj) (pure unit)
+--     pure Nothing
 
 
 foreign import catImpl :: ∀ r eff.
@@ -103,7 +112,7 @@ catProducer ipfs (IPFSPathString path) = do
     onClose str $ emit (Right unit)
 
 
--- TODO: Node.Stream can't deal with Object streams
+-- TODO: get also uses object mode streams
 -- foreign import getImpl :: ∀ r eff.
 --                           EffFn2 (ipfs :: IPFSEff | eff)
 --                           IPFS
