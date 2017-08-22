@@ -9,19 +9,21 @@ module IPFS.Files where
 
 import Prelude
 
-import Control.Coroutine (Consumer, Producer, await)
+import Control.Coroutine (Consumer, Producer, await, consumer)
 import Control.Coroutine.Aff (produce', produceAff)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
-import Control.Monad.Rec.Class (forever)
+import Control.Monad.Rec.Class (Step(..), forever, tailRecM)
 import Control.Monad.Trans.Class (lift)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.Traversable (traverse_)
 import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (Buffer)
@@ -61,19 +63,18 @@ add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
 --                                       IPFS
 --                                       (Promise (Duplex (ipfs :: IPFSEff | eff)))
 
--- createAddStream :: ∀ eff.
---                    IPFS
---                 -> Aff ( ipfs :: IPFSEff | eff ) (Duplex ( ipfs :: IPFSEff | eff ))
--- createAddStream ipfs = liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
+createAddStream :: ∀ eff.
+                   IPFS
+                -> (Consumer (Maybe IPFSObject) (Aff _) (Array AddResult))
+createAddStream ipfs = tailRecM go []
+  where go r = do
+          obj <- await
+          case obj of
+            Nothing -> pure $ Done r
+            Just obj' -> do
+              result <- lift $ add ipfs [obj']
+              pure $ Loop $ r <> result
 
-
--- createAddStreamConsumer :: IPFS -> Aff _ (Consumer IPFSObject (Aff _) (Array AddResult))
--- createAddStreamConsumer ipfs = do
---   stream <- liftEff (runEffFn1 createAddStreamImpl ipfs) >>= Promise.toAff
---   pure $ forever do
---     obj <- await
---     _ <- liftEff $ write stream (unsafeCoerce obj) (pure unit)
---     pure Nothing
 
 
 foreign import catImpl :: ∀ r eff.
