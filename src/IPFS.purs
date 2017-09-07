@@ -20,8 +20,12 @@ import IPFS.Types (IPFS, IPFSEff) as Exports
 
 foreign import connectImpl :: ∀ eff. EffFn2 (ipfs :: IPFSEff | eff) String Int IPFS
 
-connect :: forall eff. String -> Int -> Eff ( ipfs :: IPFSEff | eff ) IPFS
-connect = runEffFn2 connectImpl
+-- | Connect to an IPFS instance
+connect :: forall eff.
+           String
+        -> Int
+        -> Eff ( ipfs :: IPFSEff | eff ) IPFS
+connect url port = runEffFn2 connectImpl url port
 
 
 type IPFSPeer = { id :: String
@@ -30,13 +34,10 @@ type IPFSPeer = { id :: String
 
 foreign import identityImpl :: ∀ eff. EffFn1 (ipfs :: IPFSEff | eff) IPFS (Promise IPFSPeer)
 
-identity :: forall t23.
-  IPFS
-  -> Aff
-       ( ipfs :: IPFSEff
-       | t23
-       )
-       IPFSPeer
+-- | Wrapper over `ipfs.id`
+identity :: forall eff.
+            IPFS
+         -> Aff (ipfs :: IPFSEff | eff) IPFSPeer
 identity ipfs = liftEff (runEffFn1 identityImpl ipfs) >>= Promise.toAff
 
 
@@ -47,11 +48,8 @@ type IPFSVersion = { version :: String
 
 foreign import versionImpl :: ∀ eff. EffFn1 (ipfs :: IPFSEff | eff) IPFS (Promise IPFSVersion)
 
+-- | Wrapper over `ipfs.version`
 version :: forall eff.
-  IPFS
-  -> Aff
-       ( ipfs :: IPFSEff
-       | eff
-       )
-       IPFSVersion
+           IPFS
+        -> Aff (ipfs :: IPFSEff | eff) IPFSVersion
 version ipfs = liftEff (runEffFn1 versionImpl ipfs) >>= Promise.toAff

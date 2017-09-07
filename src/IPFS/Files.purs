@@ -1,10 +1,8 @@
-module IPFS.Files where
-       -- (
-       --   cat
-       -- , catImpl2
-       -- ) where
-
-
+module IPFS.Files
+       ( add
+       , cat
+       , catProducer
+       ) where
 
 
 import Prelude
@@ -47,33 +45,13 @@ foreign import addImpl :: ∀ eff.
                           (Array IPFSObject)
                           (Promise (Array AddResult))
 
+
+-- | Add an array of objects to an IPFS instance
 add :: ∀ eff.
-  IPFS
-  -> Array IPFSObject
-  -> Aff ( ipfs :: IPFSEff
-         | eff
-         ) (Array AddResult)
+       IPFS
+    -> Array IPFSObject
+    -> Aff (ipfs :: IPFSEff | eff) (Array AddResult)
 add ipfs objs = liftEff (runEffFn2 addImpl ipfs objs) >>= Promise.toAff
-
-
--- TODO: createAddStream uses object mode streams AFAICT,
--- which are not supported by purescript-node-streams
--- foreign import createAddStreamImpl :: ∀ eff.
---                                       EffFn1 (ipfs :: IPFSEff | eff)
---                                       IPFS
---                                       (Promise (Duplex (ipfs :: IPFSEff | eff)))
-
-createAddStream :: ∀ eff.
-                   IPFS
-                -> (Consumer (Maybe IPFSObject) (Aff _) (Array AddResult))
-createAddStream ipfs = tailRecM go []
-  where go r = do
-          obj <- await
-          case obj of
-            Nothing -> pure $ Done r
-            Just obj' -> do
-              result <- lift $ add ipfs [obj']
-              pure $ Loop $ r <> result
 
 
 
@@ -83,24 +61,21 @@ foreign import catImpl :: ∀ r eff.
                           String
                           (Promise (Readable r (ipfs :: IPFSEff | eff)))
 
+
+-- | Read an object from an IPFS instance, returning a Node Stream
 cat :: ∀ r eff.
        IPFS
     -> IPFSPath
-    -> Aff
-          ( ipfs :: IPFSEff
-          | eff
-          )
-          (Readable r
-             ( ipfs :: IPFSEff
-             | eff
-             )
-          )
+    -> Aff (ipfs :: IPFSEff | eff) (Readable r (ipfs :: IPFSEff | eff))
 cat ipfs (IPFSPathString path) = liftEff (runEffFn2 catImpl ipfs path) >>= Promise.toAff
 
 
 type CatEffs eff = ( ipfs :: IPFSEff
                    , exception :: EXCEPTION
                    , avar :: AVAR | eff)
+
+
+-- | Create a coroutine producer that produces the contents of a file as a String
 catProducer :: ∀ eff.
                IPFS
             -> IPFSPath
@@ -111,12 +86,3 @@ catProducer ipfs (IPFSPathString path) = do
   pure $ produce' \emit -> do
     onDataString str UTF8 $ emit <<< Left
     onClose str $ emit (Right unit)
-
-
--- TODO: get also uses object mode streams
--- foreign import getImpl :: ∀ r eff.
---                           EffFn2 (ipfs :: IPFSEff | eff)
---                           IPFS
---                           String
---                           (Promise (Readable r (ipfs :: IPFSEff | eff)))
--- get ipfs (IPFSPathString path) = (liftEff (runEffFn2 getImpl ipfs path) >>= Promise.toAff)
