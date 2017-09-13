@@ -37,6 +37,10 @@ pathStr = "/ipfs/QmVLDAhCY3X9P2uRudKAryuQFPM5zqA3Yij1dY8FpGbL7T/quick-start"
 path = IPFSPathString pathStr
 
 
+
+
+
+
 main :: Eff _ Unit
 main = do
   ipfs <- IPFS.connect "localhost" 5001
@@ -104,32 +108,6 @@ main = do
 
     traverse_ (\p -> runProcess ((p $~ trns) $$ cnsm)) producers
 
-
-    -- liftEff $ log "----- Add files with consumer -----"
-    -- streamConsumer <- Files.createAddStreamConsumer ipfs
-    -- runProcess $ streamConsumer `pullFrom` do
-    --   bfr1 <- liftEff $ Buffer.fromString "buffer1" UTF8
-    --   bfr2 <- liftEff $ Buffer.fromString "buffer2" UTF8
-    --   emit {path: "/tmp/buffer1", content: bfr1}
-    --   emit {path: "/tmp/buffer2", content: bfr2}
-    bfr1 <- liftEff $ Buffer.fromString "buffer1" UTF8
-    bfr2 <- liftEff $ Buffer.fromString "buffer2" UTF8
-
-    liftEff $ log "----- Add files with consumer -----"
-    let streamConsumer = Files.createAddStream ipfs
-    let fileProducer :: Producer (Maybe IPFSObject) (Aff _) (Array AddResult)
-        fileProducer = produce \emit -> do
-          emit $ Left $ Just {path: "/tmp/buffer1", content: bfr1}
-          emit $ Left $ Just {path: "/tmp/buffer2", content: bfr2}
-          emit $ Left $ Nothing
-
-
-    results <- runProcess $ streamConsumer `pullFrom` fileProducer
-
-    liftEff $ do
-      log $ "wrote " <> (show $ length results) <> " files:"
-      traverse_ (log <<< _.hash) results
-    traverse_ (strFile <=< Files.cat ipfs <<< IPFSPathString <<< _.hash) results
 
 
     liftEff $ do

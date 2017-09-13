@@ -2,6 +2,8 @@ module IPFS.Files
        ( add
        , cat
        , catProducer
+       , IPFSObject
+       , AddResult
        ) where
 
 
