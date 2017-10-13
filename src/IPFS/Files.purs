@@ -9,27 +9,21 @@ module IPFS.Files
 
 import Prelude
 
-import Control.Coroutine (Consumer, Producer, await, consumer)
-import Control.Coroutine.Aff (produce', produceAff)
+import Control.Coroutine (Producer)
+import Control.Coroutine.Aff (produce')
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Uncurried (EffFn1, EffFn2, runEffFn1, runEffFn2)
-import Control.Monad.Rec.Class (Step(..), forever, tailRecM)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2)
 import Control.Promise (Promise)
 import Control.Promise as Promise
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.Traversable (traverse_)
 import IPFS (IPFS, IPFSEff)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (Buffer)
 import Node.Encoding (Encoding(..))
-import Node.Stream (Duplex, Readable, Writable, onClose, onData, onDataString, write)
-import Unsafe.Coerce (unsafeCoerce)
+import Node.Stream (Readable, onClose, onDataString)
 
 
 type IPFSObject = { path :: String

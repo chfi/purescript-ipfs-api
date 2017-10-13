@@ -3,11 +3,12 @@
   "version": "0.0.1",
   "description": "Purescript API to the Interplanetary File System",
   "dependencies": {
+    "end-of-stream": "^1.4.0",
     "ipfs-api": "^14.1.2"
   },
   "devDependencies": {
     "bower": "1.8.0",
-    "pulp": "11.0.0"
+      "pulp": "11.0.0"
   },
   "license": "MIT",
   "repository": {
