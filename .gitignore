@@ -8,3 +8,4 @@
 /.psa*
 /app.js
 .DS_STORE
+*.nix
