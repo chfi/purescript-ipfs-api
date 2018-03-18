@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "bower": "1.8.0",
-      "pulp": "11.0.0"
+    "pulp": "11.0.0"
   },
   "license": "MIT",
   "repository": {
