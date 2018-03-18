@@ -25,19 +25,19 @@ import IPFS (IPFSEff)
 import IPFS as IPFS
 import IPFS.Files (IPFSObject)
 import IPFS.Files as Files
+import IPFS.Block as Block
+import IPFS.Block (defaultPutOpts)
 import IPFS.Types (IPFSPath(..))
 import Node.Buffer (fromString)
 import Node.Buffer as Buffer
 import Node.Encoding (Encoding(..))
 import Node.Stream as Stream
+import Test.Spec.Assertions (shouldEqual)
 import Unsafe.Coerce (unsafeCoerce)
 
 
 pathStr = "/ipfs/QmVLDAhCY3X9P2uRudKAryuQFPM5zqA3Yij1dY8FpGbL7T/quick-start"
 path = IPFSPathString pathStr
-
-
-
 
 
 
@@ -47,6 +47,10 @@ main = do
   _ <- launchAff $ do
     ver <- IPFS.version ipfs
     ident <- IPFS.identity ipfs
+
+    liftEff $ do
+      log $ "version: " <> ver.version
+      log $ "id: " <> ident.id
 
     let strFile f = liftEff $ Stream.onData f \bfr -> do
           log "reading file"
@@ -75,13 +79,45 @@ main = do
 
 
     liftEff $ log "----- write JSON file -----"
-    jsonObj <- liftEff $ Buffer.fromString """
+    let jsonObjStr = """
         {"test": "hello!!",
         "other": 1.0}
-          """ UTF8
+          """
+    jsonObj <- liftEff $ Buffer.fromString jsonObjStr UTF8
 
     results <- Files.add ipfs [{path: "/tmp/jsontest.txt", content: jsonObj }]
     let hashes = map (IPFSPathString <<< _.hash) $ fromMaybe [] (init results)
+
+    -- Block tests
+
+    liftEff $ log "----- write block -----"
+    putRes <- Block.put ipfs jsonObj defaultPutOpts
+    liftEff $ log "put block"
+    putRes.cid `shouldEqual` "QmVk5ASkHK8LLzcCYNFb1ChWEnTkPQ8fusiwNXGGQKFgJo"
+    liftEff $ log "MH matches"
+
+    liftEff $ log "----- get block -----"
+    getRes <- Block.get ipfs putRes.cid
+    liftEff $ log "got block"
+
+    retData <- liftEff $ Buffer.toArray getRes.data
+    inputData <- liftEff $ Buffer.toArray jsonObj
+    retData `shouldEqual` inputData
+    liftEff $ log "returned data matches"
+
+    retAsStr <- liftEff $ Buffer.toString UTF8 getRes.data
+    retAsStr `shouldEqual` jsonObjStr
+    liftEff $ log "returned data as string matches"
+
+    liftEff $ log "----- stat block -----"
+    statRes <- Block.stat ipfs putRes.cid
+    liftEff $ log "stat'd block"
+
+    bufLen <- (liftEff $ Buffer.size jsonObj)
+    bufLen `shouldEqual` statRes.size
+    liftEff $ log "size matches"
+
+    -- move producers to end because it seems to terminate the test early otherwise
 
     liftEff $ log "----- Producer with cat -----"
     producers <- traverse (Files.catProducer ipfs) hashes
@@ -108,10 +144,6 @@ main = do
 
     traverse_ (\p -> runProcess ((p $~ trns) $$ cnsm)) producers
 
-
-
-    liftEff $ do
-      log $ "version: " <> ver.version
-      log $ "id: " <> ident.id
+    liftEff $ log "This message should print but it never does!"
 
   pure unit
